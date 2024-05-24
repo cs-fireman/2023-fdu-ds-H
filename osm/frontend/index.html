@@ -1,0 +1,1045 @@
+<!doctype html>
+<head>
+    <title>fwj little map</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://pixijs.download/release/pixi.min.js"></script>
+</head>
+<html>
+<body>
+<div id="sidebar">
+    <!-- 侧边栏内容 -->
+    <a href="#">链接1</a>
+    <a href="#">链接2</a>
+    <a href="#">链接3</a>
+    <div>
+        <input type="checkbox" id="testModeCheckboxDij">
+        <label for="testModeCheckboxDij">test dijkstra</label>
+    </div>
+    <div>
+        <input type="checkbox" id="testModeCheckboxAstar">
+        <label for="testModeCheckboxAstar">test A*</label>
+    </div>
+    <div>
+        <input type="checkbox" id="clearCanvas">
+        <label for="clearCanvas">clear</label>
+    </div>
+    <div>
+        <input type="checkbox" id="navigatorMode">
+        <label for="navigatorMode">navigator</label>
+    </div>
+    <div>
+        <input type="checkbox" id="top-k-Mode">
+        <label for="top-k-Mode">top-k</label>
+    </div>
+    <div>
+        <input type="number" id="topKValue" placeholder="Enter k value" disabled>
+    </div>
+    <div>
+        <input type="checkbox" id="a&d-experiment">
+        <label for="a&d-experiment">A*和dij的性能比较实验</label>
+    </div>
+    <div>
+        <input type="number" id="experiment-times" placeholder="Enter experiment times">
+    </div>
+</div>
+<button id="toggleSidebar">☰</button>
+<div id="searchBox">
+    <input type="text" id="searchInput" placeholder="搜索地点...">
+    <button id="searchButton">起点</button>
+    <div id="searchResults" class="search-results"></div>
+</div>
+<div id="searchBox1">
+    <input type="text" id="searchInput1" placeholder="搜索地点...">
+    <button id="searchButton1">终点</button>
+    <div id="searchResults1" class="search-results1"></div>
+</div>
+<div id="gobtn-container">
+    <button id="gobtn">GO!</button>
+</div>
+
+    
+<canvas id="test" width="1441" height="838"></canvas>
+</body>
+<script>
+    // UI
+    document.getElementById('toggleSidebar').onclick = function() {
+        var sidebar = document.getElementById('sidebar');
+        var mapContainer = document.getElementById('map-container');
+        if (sidebar.style.left === '0px') {
+            sidebar.style.left = '-250px';
+        } else {
+            sidebar.style.left = '0px';
+        }
+    }
+    // 调试交互
+    function sendDataToCpp() {
+        var complexData = {
+            name: "Example",
+            value: 42,
+            nested: { flag: true }
+        };
+
+        var dataString = JSON.stringify(complexData);
+
+        Module.processComplexData(dataString)
+    }
+    /**
+     * 缩放因子
+     * 50000小 
+     * 300000大
+     **/
+    var scale_factor = 0 // Math.min(1441 / (bounds.maxlon - bounds.minlon), 838 / (bounds.maxlat - bounds.minlat)) // 缩放倍数
+    // 缩放函数
+    var scale = function (point) {
+        // 对经纬度值进行缩放，自行修改
+        return [(point.lon - bounds.minlon) * parseInt(scale_factor), (point.lat - bounds.minlat) * parseInt(scale_factor)]
+    }
+    var fontSize = dw // 字体大小
+    var obj = [] // get_Ways得到的数据
+    var obj_nodes = []
+    // var adj_list = [] // 邻接表
+    var bounds = [] // 边界经纬度
+    var name_list = {} // 有名字的表
+    // GPS常量
+    var current_gps_lon
+    var current_gps_lat
+    // 画布常量
+    var initialCanvasState
+    // 模式变量
+    var test_dij_flag = 0
+    var test_aStar_flag = 0
+    var navigator_flag = 0
+    var top_k_flag = 0
+    var experiment_flat = 0
+    // 窗口变量
+    var win_width = window.innerWidth;
+    var win_height = window.innerHeight;
+    // 颜色常量
+    var mygray = '#DDDDDD'
+    var mypink = '#FFB7DD'
+    var myred = '#FFC8B4'
+    var myorange = '#FFBB66'
+    var myyellow = '#FFEE99'
+    var mygreen = '#CCFF99'
+    var myblue = '#AAFFEE'
+    var myviolet = '#B088FF'
+    var mypurple = '#E38EFF'
+    var myblack = '#000000'
+    // 宽度常量
+    var dw 
+    var w1 
+    var w2 
+    var w3 
+    var w4 
+    var w5 
+    var w6 
+    var w7 
+    var w8 
+    var w9 
+    var w10 
+    var w11 
+    var w12 
+    var w13 
+    var w14 
+    var w15 
+    var w20 
+    var w50
+// --------------------------------------------画图函数----------------------------------------------------
+    var draw = function (data) {
+        // 一般的画图模板函数
+        let points = data.nodes
+        let tags = data.tags
+        let test = document.getElementById("test")
+        let way = test.getContext("2d")
+        way.strokeStyle = '#000000'
+        way.lineWidth = w1
+                
+        way.beginPath()
+        let startpoint = scale(points[0])
+        way.moveTo(startpoint[0], startpoint[1])
+        for (let i = 1; i < points.length; i++) {
+            let tmppoint = scale(points[i])
+            way.lineTo(tmppoint[0], tmppoint[1])
+            // console.log(tmppoint[0], tmppoint[1])
+        }
+        // way.closePath()
+        way.stroke()
+    }
+    var draw_highway = function (data) {
+        let points = data.nodes
+        let test = document.getElementById("test")
+        let way = test.getContext("2d")
+        way.strokeStyle = myblack
+        way.lineWidth = w1
+        // 根据highway类型设置样式
+        if(data.tags.electrified != undefined) {
+            data.tags.highway = 'electrified'
+        }
+        switch (data.tags.highway) {
+            case 'motorway': // 高速公路
+                way.strokeStyle = myred; // 红色
+                way.lineWidth = w15;
+                break;
+            case 'electrified':
+            case 'trunk': // 干线公路
+                way.strokeStyle = myorange; // 橙色
+                way.lineWidth = w13;
+                break;
+            case 'primary': // 一级公路
+                way.strokeStyle = myyellow; // 黄色
+                way.lineWidth = w11;
+                break;
+            case 'secondary': // 二级公路
+                way.strokeStyle = mygreen; // 绿色
+                way.lineWidth = w9;
+                break;
+            case 'tertiary': // 三级公路
+                way.strokeStyle = myblue; // 蓝色
+                way.lineWidth = w8;
+                break;
+            case 'unclassified': // 未分类公路
+            case 'residential': // 居民区道路
+            case 'service': // 服务道路
+                way.strokeStyle = mygray; // 灰色
+                way.lineWidth = w6;
+                break;
+            case 'footway': // 步道
+            case 'pedestrian': // 行人道路
+                way.strokeStyle = myorange; // 棕色
+                way.lineWidth = w5;
+                break;
+            case 'path': // 小径
+                way.strokeStyle = myviolet; // 紫色
+                way.lineWidth = w5;
+                break;
+            // 您可以继续添加更多的case来处理其他类型
+            default:
+                way.strokeStyle = '#ADB9C9'; 
+                way.lineWidth = w5;
+        }
+        // way.strokeStyle = '#AAAAAA'
+        // way.lineWidth = 10
+        way.beginPath()
+        let startpoint = scale(points[0])
+        way.moveTo(startpoint[0], startpoint[1])
+        for (let i = 1; i < points.length; i++) {
+            let tmppoint = scale(points[i])
+            way.lineTo(tmppoint[0], tmppoint[1])
+        }
+        // way.closePath()
+        way.stroke()
+    }
+    var draw_building = function (data) {
+        let points = data.nodes
+        let test = document.getElementById("test")
+        let way = test.getContext("2d")
+        // way.lineWidth = 2
+        switch (data.tags.building) {
+            case 'house':
+                way.fillStyle = mypink; // 淡粉色，代表住宅
+                break;
+            case 'school':
+                way.fillStyle = myyellow; // 金色，代表学校
+                break;
+            case 'hospital':
+                way.fillStyle = myred; // 红色，代表医院
+                break;
+            case 'commercial':
+                way.fillStyle = myblue; // 蓝色，代表商业建筑
+                break;
+            // ...可以根据需要添加更多case
+            default :
+                way.fillStyle = mygray
+        }
+        way.beginPath()
+        let startpoint = scale(points[0])
+        let midpoint = startpoint
+        way.moveTo(startpoint[0], startpoint[1])
+        for (let i = 1; i < points.length; i++) {
+            let tmppoint = scale(points[i])
+            midpoint[0] += tmppoint[0]
+            midpoint[1] += tmppoint[1]
+            way.lineTo(tmppoint[0], tmppoint[1])
+        }
+        midpoint[0] /= points.length
+        midpoint[1] /= points.length
+        way.closePath()
+        way.fill()
+    }
+    var draw_leisure = function (data) {
+        let points = data.nodes
+        let test = document.getElementById("test")
+        let way = test.getContext("2d")
+        // way.lineWidth = 2
+        switch (data.tags.leisure) {
+            case 'park':
+                way.fillStyle = mygreen; // 绿色，代表公园
+                break;
+            case 'swimming_pool':
+                way.fillStyle = myblue; // 蓝色，代表游泳池
+                break;
+            case 'pitch':
+                way.fillStyle = myyellow; // 黄色，代表运动场
+                break;
+            case 'playground':
+                way.fillStyle = myorange; // 橙色，代表游乐场
+                break;
+            case 'garden':
+                way.fillStyle = mygreen; // 亮绿色，代表花园
+                break;
+            // ...根据需要添加更多case
+            default:
+                way.fillStyle = '#ADB9C9'; // 默认颜色
+        }
+        way.beginPath()
+        let startpoint = scale(points[0])
+        way.moveTo(startpoint[0], startpoint[1])
+        for (let i = 1; i < points.length; i++) {
+            let tmppoint = scale(points[i])
+            way.lineTo(tmppoint[0], tmppoint[1])
+        }
+        way.closePath()
+        way.fill()
+    }
+    var draw_landuse = function (data) {
+        let points = data.nodes
+        let test = document.getElementById("test")
+        let way = test.getContext("2d")
+        switch (data.tags.landuse) {
+            case 'residential':
+                way.fillStyle = myblue; // 淡蓝色，代表住宅区
+                break;
+            case 'commercial':
+                way.fillStyle = myorange; // 橙色，代表商业区
+                break;
+            case 'industrial':
+                way.fillStyle = mygray; // 灰色，代表工业区
+                break;
+            case 'farmland':
+                way.fillStyle = myyellow; // 黄色，代表农田
+                break;
+            case 'forest':
+                way.fillStyle = mygreen; // 深绿色，代表森林
+                break;
+            case 'grass':
+                way.fillStyle = mygreen; // 亮绿色，代表草地
+                break;
+            case 'meadow':
+                way.fillStyle = mygreen; // 春绿色，代表公园
+                break;
+            case 'military':
+                way.fillStyle = myred
+                break;
+            // ...根据需要添加更多case
+            default:
+                way.fillStyle = '#ADB9C9'; // 默认颜色
+        }
+        way.beginPath()
+        let startpoint = scale(points[0])
+        way.moveTo(startpoint[0], startpoint[1])
+        for (let i = 1; i < points.length; i++) {
+            let tmppoint = scale(points[i])
+            way.lineTo(tmppoint[0], tmppoint[1])
+        }
+        way.closePath()
+        way.fill()
+    }
+    var draw_natural = function (data) {
+        let points = data.nodes;
+        let test = document.getElementById("test");
+        let way = test.getContext("2d");
+        switch (data.tags.natural) {
+            case 'wood':
+            case 'forest':
+                way.fillStyle = mygreen; // 深绿色，代表森林或树林
+                break;
+            case 'water':
+                way.fillStyle = myblue; // 蓝色，代表水体
+                break;
+            case 'sand':
+                way.fillStyle = myyellow; // 沙色，代表沙地
+                break;
+            case 'heath':
+                way.fillStyle = mygray; // 淡灰色，代表荒地
+                break;
+            case 'grassland':
+                way.fillStyle = mygreen; // 草绿色，代表草地
+                break;
+            // ...根据需要添加更多case
+            default:
+                way.fillStyle = '#ADB9C9'; // 默认颜色
+        }
+        way.beginPath();
+        let startpoint = scale(points[0]);
+        way.moveTo(startpoint[0], startpoint[1]);
+        for (let i = 1; i < points.length; i++) {
+            let tmppoint = scale(points[i]);
+            way.lineTo(tmppoint[0], tmppoint[1]);
+        }
+        way.closePath();
+        way.fill();
+    };
+    var draw_amenity = function (data) {
+        let points = data.nodes;
+        let test = document.getElementById("test");
+        let way = test.getContext("2d");
+
+        switch (data.tags.amenity) {
+            case 'parking':
+                way.fillStyle = mygray; // 灰色，代表停车场
+                break;
+            case 'restaurant':
+                way.fillStyle = myorange; // 橙红色，代表餐馆
+                break;
+            case 'university':
+            case 'school':
+                way.fillStyle = myyellow; // 金色，代表学校
+                break;
+            case 'hospital':
+                way.fillStyle = myred; 
+                break;
+            case 'bank':
+                way.fillStyle = myblue; // 蓝色，代表银行
+                break;
+            // ...根据需要添加更多case
+            default:
+                way.fillStyle = '#ADB9C9'; // 默认颜色
+        }
+
+        way.beginPath();
+        let startpoint = scale(points[0]);
+        way.moveTo(startpoint[0], startpoint[1]);
+        for (let i = 1; i < points.length; i++) {
+            let tmppoint = scale(points[i]);
+            way.lineTo(tmppoint[0], tmppoint[1]);
+        }
+        way.closePath();
+        way.fill();
+    };
+    var draw_barrier = function (data) {
+        let points = data.nodes;
+        let test = document.getElementById("test");
+        let way = test.getContext("2d");
+
+        switch (data.tags.barrier) {
+            case 'fence':
+                way.strokeStyle = mygray; // 灰色，代表栅栏
+                way.lineWidth = w2;
+                break;
+            case 'wall':
+                way.strokeStyle = mygray; // 深灰色，代表墙
+                way.lineWidth = w4;
+                break;
+            case 'hedge':
+                way.strokeStyle = mygreen; // 深绿色，代表树篱
+                way.lineWidth = w3;
+                break;
+            case 'gate':
+                way.strokeStyle = myyellow; // 金色，代表大门
+                way.lineWidth = w3;
+                break;
+            case 'bollard':
+                way.strokeStyle = myblack; // 黑色，代表柱状路障
+                way.lineWidth = w1;
+                break;
+            // ...根据需要添加更多case
+            default:
+                way.strokeStyle = '#ADB9C9'; // 默认颜色
+                way.lineWidth = w1;
+        }
+
+        way.beginPath();
+        let startpoint = scale(points[0]);
+        way.moveTo(startpoint[0], startpoint[1]);
+        for (let i = 1; i < points.length; i++) {
+            let tmppoint = scale(points[i]);
+            way.lineTo(tmppoint[0], tmppoint[1]);
+        }
+        way.stroke();
+    };
+    var draw_name = function (data) {
+        // 显示文字
+        // console.log(data)
+        let points = data.nodes;
+        let test = document.getElementById("test");
+        let way = test.getContext("2d");
+        way.fillStyle = '#000000'; // 文字颜色
+        way.font = dw + 'px Arial'; // 文字大小和字体
+
+        if (data.tags) {
+            if (data.tags.highway) {
+                // 对于高速公路，在每个一定间隔的点上写名称
+                for (let i = 0; i < points.length; i += 40) { // 以5为间隔，可以根据需要调整
+                    let point = scale(points[i]);
+                    way.fillText(data.tags.name, point[0], point[1]);
+                }
+            } else {
+                // 对于其他类型，找到所有点的中心位置并在那里写名称
+                let sumX = 0, sumY = 0;
+                points.forEach(function (point) {
+                    let scaledPoint = scale(point);
+                    sumX += scaledPoint[0];
+                    sumY += scaledPoint[1];
+                });
+                let centerX = sumX / points.length;
+                let centerY = sumY / points.length;
+                way.fillText(data.tags.name, centerX, centerY);
+            }
+        }
+    };
+    var draw_node = function (node, color, size) {
+        // 画点函数
+        console.log('in draw_node',node)
+        let test = document.getElementById("test")
+        let way = test.getContext("2d")   
+        point = scale(node) 
+        way.beginPath()
+        way.arc(point[0], point[1], size || w20, 0, Math.PI * 2);
+        way.fillStyle = color || "#000000"
+        way.fill()
+    }
+    var draw_data = function (data, color) {
+        console.log('in draw data',data)
+        // 画离鼠标点击最近的obj的函数
+        let points = data.nodes
+        let tags = data.tags
+        let test = document.getElementById("test")
+        let way = test.getContext("2d")
+        way.strokeStyle = color || '#FF0000'
+        way.lineWidth = w10
+                
+        way.beginPath()
+        let startpoint = scale(points[0])
+        way.moveTo(startpoint[0], startpoint[1])
+        for (let i = 1; i < points.length; i++) {
+            let tmppoint = scale(points[i])
+            way.lineTo(tmppoint[0], tmppoint[1])
+        }
+        // way.closePath()
+        way.stroke()
+    }
+    var draw_line_betweenNode = function(node1, node2) {
+        // 画出两点之间的线
+        let test = document.getElementById("test")
+        let way = test.getContext("2d")  
+        point1 = scale(node1)
+        point2 = scale(node2)
+        way.beginPath()
+        way.strokeStyle = '#000000'
+        way.lineWidth = w15
+        way.moveTo(point1[0], point1[1])
+        way.lineTo(point2[0], point2[1])
+        way.stroke()
+    }
+    var draw_shortest_path = function(data, color, width, flag, txt) {
+        // 画最短路
+        // console.log(data)
+        if(data == undefined) {
+            console.log("cannot draw because not found")
+            return
+        }
+        let test = document.getElementById("test")
+        let way = test.getContext("2d")  
+        way.strokeStyle = color || "#FF0088"
+        way.lineWidth = width || dw
+        way.beginPath()
+        let startpoint = scale(obj_nodes[data[0]])
+        way.moveTo(startpoint[0], startpoint[1])
+        for (let i = 1; i < data.length; i++) {
+            let tmppoint = scale(obj_nodes[data[i]])
+            way.lineTo(tmppoint[0], tmppoint[1])
+        }
+        // way.closePath()
+        way.stroke()
+        if(flag == 'top-k') {
+            let midpoint = scale(obj_nodes[data[parseInt(data.length/2)]])
+            way.font = 50 + 'px Arial';
+            console.log('in top-k draw: midpoint = ', midpoint)
+            way.fillText(txt, midpoint[0], midpoint[1])
+        }
+    }
+   
+    var draw_shortest_paths = function(data, color, width, flag) {
+        // 画找到的所有最短路
+        let cnt = 0
+        data.forEach(item => {
+            cnt ++;
+            let letters = '0123456789ABCDEF';
+            let topKcolor = '#';
+            for (let i = 0; i < 6; i++) {
+                topKcolor += letters[Math.floor(Math.random() * 16)];
+            }
+            draw_shortest_path(item, flag == 'top-k' ? topKcolor : color, width, flag == 'top-k' ? 'top-k' : undefined, flag == 'top-k' ? cnt : undefined)
+        })
+    }
+//-------------------------------------------------------------------------------------------------------------
+    // top-k中k的值
+    function getTopKValue() {
+        var topKInput = document.getElementById('topKValue');
+        return topKInput.value ? parseInt(topKInput.value) : 0; 
+    }
+    function getNodeIdFromCoordinates(x, y, flag) {
+        // 找到离鼠标点击坐标(x,y)最近的node以及它的代表元
+        // 实现方式为遍历所有点并计算距离，有点慢
+        // 将画布坐标转换为经纬度
+        let lon, lat
+        if(flag == 'search' || flag == 'navigator') {
+            lon = x
+            lat = y
+        } else {
+            lon = (x / parseInt(scale_factor)) + parseFloat(bounds.minlon); // 这里使用的比例因子和偏移量需要与scale函数中的相匹配
+            lat = (y / parseInt(scale_factor)) + parseFloat(bounds.minlat);            
+        }
+
+
+        let closestNode = null; // 最近的点
+        let closestWayNode = null; // 最近的highway node
+        let closestNodeData = null; // 最近的点的代表元
+        let closestDistance = Infinity; // 最近距离
+        let closestWayDistance = Infinity; // 最近的way node的距离
+        // 遍历所有节点，找到最近的一个
+        for(let data in obj) {
+            let nodes = obj[data].nodes
+            let tags = obj[data].tags
+            for (let id in nodes) {
+                let node = nodes[id]
+                let nodeLon = parseFloat(node["lon"])
+                let nodeLat = parseFloat(node["lat"])
+                // 计算距离（这里简化处理，未考虑地球曲率）
+                let distance = Math.sqrt(Math.pow(nodeLon - lon, 2) + Math.pow(nodeLat - lat, 2))
+                if (distance < closestDistance) {
+                    closestDistance = distance
+                    closestNodeData = data
+                    closestNode = node
+                }
+                if(tags && (tags.highway || tags.cycleway)) {
+                    if(distance < closestWayDistance) {
+                        closestWayDistance = distance
+                        closestWayNode = node                        
+                    }
+                }
+            }
+        }
+
+        return {
+            "closestNode":closestNode, 
+            "closestNodeData":closestNodeData,
+            "closestWayNode":closestWayNode,
+            "closestDistance":closestDistance,
+            "closestWayDistance":closestWayDistance,
+        }
+    }
+    // 绘制函数映射
+    var drawFunctions = {
+        'landuse': draw_landuse,
+        'natural': draw_natural,
+        'highway': draw_highway,
+        'electrified': draw_highway,
+        'building': draw_building,
+        'leisure': draw_leisure,
+        'amenity': draw_amenity,
+        'barrier': draw_barrier,
+    };
+
+    // 绘制顺序
+    var drawOrder = ['landuse', 'natural','amenity' ,'electrified', 'barrier','leisure','highway', 'building'];
+    // 主体
+    var Module = {
+        print: function(text) {
+            // 重载print
+            console.log(text);
+        },
+        // Module 调用的函数load和getWays均为test.cpp中定义好的
+        onRuntimeInitialized: function () {
+            Module.load()
+            // 加载test.cpp中的函数
+            let jsondata = Module.getWays()
+            let jsondata_nodes = Module.getNodes()
+            let jsondata_bounds = Module.getBounds()
+            // let jsondata_adj = Module.getAdjList()
+            // 解析json数据
+            obj = JSON.parse(jsondata)
+            obj_nodes = JSON.parse(jsondata_nodes)
+            bounds = JSON.parse(jsondata_bounds)
+            console.log('bound',bounds)
+            // adj_list = JSON.parse(jsondata_adj)
+            
+            // 获取 canvas 元素并设置其宽度和高度
+            let cvs = document.getElementById('test');
+            cvs.width = win_width;
+            cvs.height = win_height;
+            scale_factor = Math.min(cvs.width / (bounds.maxlon - bounds.minlon), cvs.height / (bounds.maxlat - bounds.minlat))
+            console.log('放大倍数', scale_factor)
+            // 宽度常量
+            dw = parseFloat(parseInt(scale_factor) / 10000)
+            w1 = parseFloat(1 * parseInt(scale_factor) / 300000)
+            w2 = parseFloat(2 * parseInt(scale_factor) / 300000)
+            w3 = parseFloat(3 * parseInt(scale_factor) / 300000)
+            w4 = parseFloat(4 * parseInt(scale_factor) / 300000)
+            w5 = parseFloat(5 * parseInt(scale_factor) / 300000)
+            w6 = parseFloat(6 * parseInt(scale_factor) / 300000)
+            w7 = parseFloat(7 * parseInt(scale_factor) / 300000)
+            w8 = parseFloat(8 * parseInt(scale_factor) / 300000)
+            w9 = parseFloat(9 * parseInt(scale_factor) / 300000)
+            w10 = parseFloat(10 * parseInt(scale_factor) / 300000)
+            w11 = parseFloat(11 * parseInt(scale_factor) / 300000)
+            w12 = parseFloat(12 * parseInt(scale_factor) / 300000)
+            w13 = parseFloat(13 * parseInt(scale_factor) / 300000)
+            w14 = parseFloat(14 * parseInt(scale_factor) / 300000)
+            w15 = parseFloat(15 * parseInt(scale_factor) / 300000)
+            w20 = parseFloat(20 * parseInt(scale_factor) / 300000)
+            w50 = parseFloat(50 * parseInt(scale_factor) / 300000)
+            // 渲染地图UI
+            drawOrder.forEach(function(type) {
+                console.log(type)
+                for (let data in obj) {
+                    if(obj[data].tags && obj[data].tags[type]) {
+                        drawFunctions[type](obj[data]);
+                    }
+                }
+            })
+            for (let data in obj) {
+                if(obj[data].tags && (obj[data].tags.highway || obj[data].tags.electrified||obj[data].tags.building || obj[data].tags.leisure || obj[data].tags.landuse || obj[data].tags.natural ||obj[data].tags.amenity || obj[data].tags.barrier )) {
+                } else {
+                    draw(obj[data])
+                }
+                if(obj[data].tags && obj[data].tags.name) {
+                    name_list[obj[data].tags.name] = obj[data]
+                    draw_name(obj[data])
+                }
+            }
+            // console.log('name list', name_list)
+            let context = cvs.getContext("2d")
+            initialCanvasState = context.getImageData(0, 0, cvs.width, cvs.height)
+        }
+    }
+
+    // canvas鼠标点击事件
+    var firstCanvas = document.getElementById("test")
+    var firstCtx = firstCanvas.getContext("2d")
+    var startNode = {}
+    var endNode = {}
+    var startWayNode = {}
+    var endWayNode = {}
+    var startNodeData = 0
+    var endNodeData = 0
+    firstCanvas.addEventListener('click', function(event) {
+        // 交互调试
+        // sendDataToCpp()
+        // console.log(obj)
+        // console.log(obj_nodes)
+        // console.log("adj list",adj_list)
+        // Module.printAdjList()
+        // let sp = Module.findShortestPath("667526464", "667526479")
+        // let ssp = JSON.parse(sp)
+        // console.log('ssp',ssp)
+        // draw_shortest_path(ssp)
+        // 获取点击的坐标并转换为节点 ID
+        
+        if(navigator_flag == 0) {
+            let nInfo = getNodeIdFromCoordinates(event.pageX, event.pageY)
+            console.log('nInfo', nInfo)
+            draw_node(nInfo.closestNode, "#FF0000")
+            draw_node(nInfo.closestWayNode)
+            draw_line_betweenNode(nInfo.closestNode, nInfo.closestWayNode)
+            // let neighbour = adj_list[nInfo.closestWayNode.id]
+            // console.log("neighbour",neighbour)
+            if (!startNodeData) {
+                startNodeData = nInfo.closestNodeData
+                startNode = nInfo.closestNode
+                startWayNode = nInfo.closestWayNode.id
+                draw_data(obj[startNodeData])
+            } else {
+                endNodeData = nInfo.closestNodeData
+                endNode = nInfo.closestNode
+                endWayNode = nInfo.closestWayNode.id
+                let shortestPaths
+                let shortestPathsJson
+
+
+                if(top_k_flag == 1) {
+                    // top-k
+                    let top_k_number = getTopKValue()
+                    shortestPaths = Module.findShortestTopK(startWayNode, endWayNode, top_k_number)
+                    shortestPathsJson = JSON.parse(shortestPaths)
+                    console.log('top-k', shortestPathsJson)
+                    draw_shortest_paths(shortestPathsJson, '#FF8800', w50, 'top-k')                    
+                } else {
+                    // test dij
+                    if(test_dij_flag == 1) {
+                        shortestPaths = Module.findShortestPath_dij_test(startWayNode, endWayNode)
+                        shortestPathsJson = JSON.parse(shortestPaths)
+                        // console.log("所有路dij",shortestPathsJson)
+                        draw_shortest_paths(shortestPathsJson, '#FF0000', w50)                
+                    }
+
+
+                    // test astar
+                    if(test_aStar_flag == 1) {
+                        shortestPaths = Module.findShortestPath_aStar_test(startWayNode, endWayNode)
+                        shortestPathsJson = JSON.parse(shortestPaths)
+                        // console.log("所有路astar",shortestPathsJson)
+                        draw_shortest_paths(shortestPathsJson, '#0000FF', w50)                
+                    }
+
+                    // 一条路
+                    console.log(startWayNode, endWayNode)
+                    let shortestPath = Module.findShortestPath(startWayNode, endWayNode)
+                    let shortestPathJson = JSON.parse(shortestPath)
+                    console.log("一条路",shortestPathJson)
+                    draw_shortest_path(shortestPathJson, '#00FF00', w50)
+                }
+
+
+
+                draw_data(obj[endNodeData])
+                startNodeData = 0
+                endNodeData = 0
+            }            
+        } else if(navigator_flag == 1){
+            console.log('nav mode!')
+            let nav_nInfo = getNodeIdFromCoordinates(event.pageX, event.pageY)
+            console.log('navigator nInfo', nav_nInfo)
+            draw_node(nav_nInfo.closestNode, "#FF0000")
+            draw_node(nav_nInfo.closestWayNode)
+            draw_line_betweenNode(nav_nInfo.closestNode, nav_nInfo.closestWayNode)
+            draw_data(obj[nav_nInfo.closestNodeData])
+            let crt_nInfo = getNodeIdFromCoordinates(current_gps_lon, current_gps_lat, 'navigator')
+            draw_node(crt_nInfo.closestNode, "#FF0000")
+            draw_node(crt_nInfo.closestWayNode)
+            draw_line_betweenNode(crt_nInfo.closestNode, crt_nInfo.closestWayNode)
+            draw_data(obj[crt_nInfo.closestNodeData])
+            let shortestPaths
+            let shortestPathsJson
+            // test dij
+            if(test_dij_flag == 1) {
+                shortestPaths = Module.findShortestPath_dij_test(crt_nInfo.closestWayNode.id, nav_nInfo.closestWayNode.id)
+                shortestPathsJson = JSON.parse(shortestPaths)
+                // console.log("所有路dij",shortestPathsJson)
+                draw_shortest_paths(shortestPathsJson, '#FF0000', dw)                
+            }
+
+
+            // test astar
+            if(test_aStar_flag == 1) {
+                shortestPaths = Module.findShortestPath_aStar_test(crt_nInfo.closestWayNode.id, nav_nInfo.closestWayNode.id)
+                shortestPathsJson = JSON.parse(shortestPaths)
+                // console.log("所有路astar",shortestPathsJson)
+                draw_shortest_paths(shortestPathsJson, '#0000FF', dw)                
+            }
+            let shortestPath = Module.findShortestPath(crt_nInfo.closestWayNode.id, nav_nInfo.closestWayNode.id)
+            let shortestPathJson = JSON.parse(shortestPath)
+            console.log("一条路导航",shortestPathJson)
+            draw_shortest_path(shortestPathJson, '#00FF00')
+
+
+        }
+
+    })
+
+    // 搜索框相关
+    var search_start_node;
+    var search_end_node;
+    function updateSearchResults(searchText, flag) {
+        var resultsContainer = document.getElementById(flag == 0 ? 'searchResults' : 'searchResults1');
+        resultsContainer.innerHTML = ''; // 清除现有结果
+
+        if (searchText.length === 0) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+
+        // 过滤匹配的结果
+        var matchedResults = [];
+        for (var name in name_list) {
+            if (name.includes(searchText)) {
+                matchedResults.push(name);
+            }
+        }
+
+        // 创建结果元素并添加到容器
+        matchedResults.forEach(function(result) {
+            var resultDiv = document.createElement('div');
+            resultDiv.textContent = result;
+            resultDiv.onclick = function() {
+                // 点击结果的处理逻辑
+                console.log('Clicked:', result);
+                draw_data(name_list[result]);
+                flag == 0 ? search_start_node = name_list[result].nodes[0] : search_end_node = name_list[result].nodes[0];
+                resultsContainer.style.display = 'none';
+                // 可以添加将地图移动到选中位置的代码
+            };
+            resultsContainer.appendChild(resultDiv);
+        });
+
+        resultsContainer.style.display = 'block'; // 显示结果
+    }
+
+
+    document.getElementById('searchInput').addEventListener('input', function() {
+        var searchText = this.value;
+        updateSearchResults(searchText, 0);
+    });
+    document.getElementById('searchInput1').addEventListener('input', function() {
+        var searchText = this.value;
+        updateSearchResults(searchText, 1);
+    });
+    document.getElementById('gobtn').addEventListener('click', function(event) {
+        if(navigator_flag == 0) {
+            console.log('start_search', search_start_node, 'end_search', search_end_node)
+            let search_start_way_node_id = getNodeIdFromCoordinates(search_start_node.lon, search_start_node.lat, 'search').closestWayNode.id
+            let search_end_way_node_id = getNodeIdFromCoordinates(search_end_node.lon, search_end_node.lat, 'search').closestWayNode.id
+            console.log('start search way', search_start_way_node_id, 'end search way', search_end_way_node_id)
+            let shortestPath = Module.findShortestPath(search_start_way_node_id, search_end_way_node_id)
+            let shortestPathJson = JSON.parse(shortestPath)
+            console.log("一条路，搜索框",shortestPathJson)
+            draw_shortest_path(shortestPathJson, '#00FF00')            
+        } else {
+            let search_start_way_node_id = getNodeIdFromCoordinates(current_gps_lon, current_gps_lat, 'navigator').closestWayNode.id
+            let search_end_way_node_id = getNodeIdFromCoordinates(search_end_node.lon, search_end_node.lat, 'search').closestWayNode.id
+            let shortestPath = Module.findShortestPath(search_start_way_node_id, search_end_way_node_id)
+            let shortestPathJson = JSON.parse(shortestPath)
+            draw_shortest_path(shortestPathJson, '#00FF00')            
+        }
+
+    });
+
+
+    // 侧边栏相关
+    document.getElementById('testModeCheckboxDij').addEventListener('change', function() {
+        if (this.checked) {
+            test_dij_flag = 1; // 如果复选框被选中，设置 test_flag 为 1
+            console.log("test_dij mode ON");
+        } else {
+            test_dij_flag = 0; // 如果复选框未被选中，设置 test_flag 为 9
+            console.log("test_dij mode OFF");
+        }
+    })
+    document.getElementById('testModeCheckboxAstar').addEventListener('change', function() {
+        if (this.checked) {
+            test_aStar_flag = 1; // 如果复选框被选中，设置 test_flag 为 1
+            console.log("test_aStar mode ON");
+        } else {
+            test_aStar_flag = 0; // 如果复选框未被选中，设置 test_flag 为 9
+            console.log("test_aStar mode OFF");
+        }
+    })
+    document.getElementById('clearCanvas').addEventListener('change', function() {
+        if (this.checked) {
+            startNodeData = 0
+            endNodeData = 0
+            let canvas = document.getElementById("test");
+            let context = canvas.getContext("2d");
+            console.log(initialCanvasState)
+            if (initialCanvasState) {
+                context.putImageData(initialCanvasState, 0, 0);
+            }
+            this.checked = false; // 取消勾选复选框
+        }
+    })
+    document.getElementById('navigatorMode').addEventListener('change', function() {
+        let searchBox = document.getElementById('searchBox');
+        if (this.checked) {
+            navigator_flag = 1; 
+            searchBox.style.display = 'none'; 
+            // 画当前位置
+            // if ("geolocation" in navigator) {
+            //     navigator.geolocation.getCurrentPosition(function(position) {
+            //         // 获取到的位置在 position.coords 中
+            //         current_gps_lat = position.coords.latitude;
+            //         current_gps_lon = position.coords.longitude;
+
+            //         // 在地图上显示位置的逻辑
+            //         draw_node({
+            //             lon: current_gps_lon,
+            //             lat: current_gps_lat,
+            //         }, '#000088', w50);
+
+            //     }, function(error) {
+            //         console.error("Error occurred: " + error.message);
+            //         // 处理错误情况
+            //     });
+            if ("geolocation" in navigator) {
+                // 每隔一定时间（5000 毫秒）更新位置
+                positionUpdateInterval = setInterval(function() {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        // 获取到的位置在 position.coords 中
+                        current_gps_lat = position.coords.latitude;
+                        current_gps_lon = position.coords.longitude;
+
+                        // 在地图上显示位置的逻辑
+                        draw_node({
+                            lon: current_gps_lon,
+                            lat: current_gps_lat,
+                        }, '#000088', w50);
+                    }, function(error) {
+                        console.error("Error occurred: " + error.message);
+                    }, {
+                        enableHighAccuracy: true, // 启用高精度位置
+                        maximumAge: 30000, // 位置信息的最大缓存时间
+                        timeout: 27000 // 超时时间
+                    });
+                }, 5000); // 每 5 秒更新一次位置
+            } else {
+                console.error("Geolocation is not supported by this browser.");
+            }
+
+        } else {
+            navigator_flag = 0; 
+            searchBox.style.display = 'block';
+            clearInterval(positionUpdateInterval); // 停止位置更新
+        }
+    })
+    document.getElementById('top-k-Mode').addEventListener('change', function() {
+        let topKInput = document.getElementById('topKValue');
+        let searchBox = document.getElementById('searchBox');
+        let searchBox1 = document.getElementById('searchBox1');
+        let goBtn = document.getElementById('gobtn-container');
+        if (this.checked) {
+            searchBox.style.display = 'none';
+            searchBox1.style.display = 'none';
+            goBtn.style.display = 'none';
+            top_k_flag = 1; 
+            topKInput.disabled = false;
+            console.log("top-k mode ON");
+        } else {
+            searchBox.style.display = 'block';
+            searchBox1.style.display = 'block';
+            goBtn.style.display = 'block';
+            top_k_flag = 0; 
+            topKInput.disabled = true;
+            console.log("top-k mode OFF");
+        }
+    })
+    document.getElementById('a&d-experiment').addEventListener('change', function() {
+        let timesInput = document.getElementById('experiment-times');
+        let searchBox = document.getElementById('searchBox');
+        let searchBox1 = document.getElementById('searchBox1');
+        let goBtn = document.getElementById('gobtn-container');
+        if (this.checked) {
+            searchBox.style.display = 'none';
+            searchBox1.style.display = 'none';
+            goBtn.style.display = 'none';
+            timesInput.disabled = true;
+            console.log("experiment ON");
+            Module.compare_a_and_d(parseInt(timesInput.value));
+
+        } else {
+            searchBox.style.display = 'block';
+            searchBox1.style.display = 'block';
+            goBtn.style.display = 'block';
+            timesInput.disabled = false;
+            console.log("experiment OFF");
+        }
+    })
+
+
+
+
+
+</script>
+<!-- test.js是test.cpp编译后生成的 -->
+<script src="test.js"></script>
+
+</html>

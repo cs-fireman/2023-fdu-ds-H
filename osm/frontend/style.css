@@ -1,0 +1,186 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+canvas {
+    transform: translate3d(0, 0, 0);
+}
+
+
+#sidebar {
+    height: 100%;
+    width: 250px;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: -250px;
+    background-color: #f1f1f1;
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+}
+
+#sidebar a {
+    padding: 10px 15px;
+    text-decoration: none;
+    font-size: 18px;
+    color: #818181;
+    display: block;
+    transition: 0.3s;
+}
+
+#sidebar a:hover {
+    color: #f1f1f1;
+}
+
+#toggleSidebar {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    background-color: #fff;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 20px;
+}
+
+
+/* 复选框和标签的样式 */
+#sidebar div {
+    /* margin-top: 20px; */
+    padding: 10px;
+    /* background-color: #e9ecef; */
+    /* border-radius: 5px; */
+    /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); */
+}
+
+#sidebar label {
+    margin-left: 10px;
+    font-size: 18px;
+    color: #818181;
+    cursor: pointer;
+}
+
+
+/* 当复选框获得焦点时的样式 */
+#sidebar input[type="checkbox"]:focus + label {
+    outline: 1px dashed #4CAF50;
+}
+
+/* 自定义复选框样式 */
+#sidebar input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: #4CAF50;
+}
+
+
+
+/* 搜索框样式 */
+
+#searchBox {
+    position: fixed;
+    top: 2%;
+    left: 14%;
+    z-index: 2;
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+#searchBox1 {
+    position: fixed;
+    top: 2%;
+    left: calc(14% + 32%);
+    z-index: 2;
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+#searchInput {
+    border: none;
+    padding: 10px;
+    margin-right: 5px;
+}
+#searchInput1 {
+    border: none;
+    padding: 10px;
+    margin-right: 5px;
+}
+
+#searchButton {
+    border: none;
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+}
+#searchButton1 {
+    border: none;
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+}
+#gobtn-container {
+    position: fixed;
+    top: 2%;
+    left: calc(14% + 64%);
+    z-index: 2;
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+#gobtn {
+    border: none;
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+}
+.search-results {
+    border: 1px solid #ccc;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    position: absolute;
+    width: calc(100% - 2px);
+    background: white;
+    display: none; /* 默认不显示 */
+}
+
+.search-results div {
+    padding: 8px;
+    cursor: pointer;
+}
+
+.search-results div:hover {
+    background-color: #f2f2f2;
+}
+
+
+.search-results1 {
+    border: 1px solid #ccc;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    position: absolute;
+    width: calc(100% - 2px);
+    background: white;
+    display: none; /* 默认不显示 */
+}
+
+.search-results1 div {
+    padding: 8px;
+    cursor: pointer;
+}
+
+.search-results1 div:hover {
+    background-color: #f2f2f2;
+}

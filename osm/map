@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="Overpass API 0.7.61.5 4133829e">
+<note>The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.</note>
+<meta osm_base="2023-11-12T09:34:01Z"/>
+
+  <bounds minlat="31.2931900" minlon="121.4961500" maxlat="31.2933300" maxlon="121.4966000"/>
+
+  <node id="3072108784" lat="31.2932117" lon="121.4961761" version="1" timestamp="2014-09-11T16:31:12Z" changeset="25371877" uid="2214848" user="fdulezi"/>
+  <node id="3072108785" lat="31.2932151" lon="121.4965596" version="1" timestamp="2014-09-11T16:31:12Z" changeset="25371877" uid="2214848" user="fdulezi"/>
+  <node id="3072108801" lat="31.2933021" lon="121.4961750" version="1" timestamp="2014-09-11T16:31:13Z" changeset="25371877" uid="2214848" user="fdulezi"/>
+  <node id="3072108802" lat="31.2933055" lon="121.4965585" version="1" timestamp="2014-09-11T16:31:13Z" changeset="25371877" uid="2214848" user="fdulezi"/>
+  <way id="302928377" version="1" timestamp="2014-09-11T16:31:17Z" changeset="25371877" uid="2214848" user="fdulezi">
+    <nd ref="3072108784"/>
+    <nd ref="3072108785"/>
+    <nd ref="3072108802"/>
+    <nd ref="3072108801"/>
+    <nd ref="3072108784"/>
+    <tag k="building" v="university"/>
+  </way>
+
+  <bounds minlat="31.2932000" minlon="121.4904000" maxlat="31.3041000" maxlon="121.5066000"/>
+  <node id="86687514" visible="true" version="3" changeset="12014729" timestamp="2012-06-25T19:00:59Z" user="Xylem" uid="66160" lat="31.3007964" lon="121.5067427"/>
+  <node id="86687515" visible="true" version="9" changeset="129648311" timestamp="2022-12-02T15:12:01Z" user="Herman Lee" uid="6921384" lat="31.2979531" lon="121.4978776"/>
+  <node id="86687516" visible="true" version="8" changeset="129648311" timestamp="2022-12-02T15:12:01Z" user="Herman Lee" uid="6921384" lat="31.2959293" lon="121.4892967">
+    <tag k="highway" v="motorway_junction"/>
+    <tag k="name" v="逸仙高架路(上海绕城方向)"/>
+    <tag k="name:en" v="Yixian Elevated Road(To Shanghai Ring Expressway)"/>
+    <tag k="ref" v="16"/>
+  </node>
+  <node id="90145309" visible="true" version="6" changeset="129648311" timestamp="2022-12-02T15:12:09Z" user="Herman Lee" uid="6921384" lat="31.2976137" lon="121.4965912"/>
+  <node id="92613882" visible="true" version="6" changeset="129648311" timestamp="2022-12-02T15:12:11Z" user="Herman Lee" uid="6921384" lat="31.2969938" lon="121.4944760"/>
+  <node id="92613897" visible="true" version="9" changeset="129648311" timestamp="2022-12-02T15:12:11Z" user="Herman Lee" uid="6921384" lat="31.2978241" lon="121.4979378"/>
+  <node id="92613981" visible="true" version="5" changeset="12014729" timestamp="2012-06-25T19:00:58Z" user="Xylem" uid="66160" lat="31.3006700" lon="121.5068005"/>
+  <node id="266073309" visible="true" version="4" changeset="12777320" timestamp="2012-08-18T21:24:06Z" user="Xylem" uid="66160" lat="31.3006159" lon="121.5070691"/>
+  <node id="266073381" visible="true" version="2" changeset="12014729" timestamp="2012-06-25T19:00:59Z" user="Xylem" uid="66160" lat="31.2943659" lon="121.5058445"/>
+  <node id="266073382" visible="true" version="4" changeset="9807218" timestamp="2011-11-12T18:42:31Z" user="Xylem" uid="66160" lat="31.2939359" lon="121.5069804">
+    <tag k="highway" v="traffic_signals"/>
+  </node>
+  <node id="266073395" visible="true" version="1" changeset="490192" timestamp="2008-05-21T04:11:18Z" user="egon" uid="38553" lat="31.2918909" lon="121.5052091"/>
+  <node id="266073396" visible="true" version="3" changeset="9793084" timestamp="2011-11-10T22:54:50Z" user="Xylem" uid="66160" lat="31.2916658" lon="121.5057607">
+    <tag k="highway" v="traffic_signals"/>
+  </node>
+
+</osm>
